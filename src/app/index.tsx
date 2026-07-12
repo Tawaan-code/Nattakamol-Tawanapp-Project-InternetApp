@@ -3,8 +3,6 @@ import { useState } from 'react';
 import {
   Alert,
   Image,
-  Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   SafeAreaView,
@@ -14,7 +12,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View
 } from "react-native";
 
@@ -34,11 +31,11 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+  
+  // ใช้ State ธรรมดาในการเก็บข้อมูลฟอร์ม
   const [formData, setFormData] = useState({ name: '', price: '', stock: '', image: null });
 
-  // ฟังก์ชันเลือกรูปที่แก้ไขปัญหาบน Web แล้ว
   const pickImage = async () => {
-    // 1. ตรวจสอบว่าถ้ารันบน Web ให้ใช้วิธีของ Web โดยเฉพาะเพื่อแก้บั๊ก Extension
     if (Platform.OS === 'web') {
       try {
         const input = document.createElement('input');
@@ -48,39 +45,34 @@ export default function App() {
           const file = e.target.files[0];
           if (file) {
             const reader = new FileReader();
-            reader.onload = (event) => {
-              setFormData({ ...formData, image: event.target.result });
-            };
+            reader.onload = (event) => setFormData({ ...formData, image: event.target.result });
             reader.readAsDataURL(file);
           }
         };
         input.click();
       } catch (error) {
-        console.error("Web image upload error:", error);
+        console.error(error);
       }
-      return; // จบการทำงานของฝั่ง Web ตรงนี้
+      return;
     }
 
-    // 2. ถ้าเป็น iOS / Android จะใช้วิธีดั้งเดิม
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Sorry, we need camera roll permissions!');
         return;
       }
-
       let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-
       if (!result.canceled) {
-        setFormData({ ...formData, image: result.assets[0].uri });
+        setFormData(prev => ({ ...prev, image: result.assets[0].uri }));
       }
     } catch (error) {
-      console.log("Error picking image:", error);
+      console.log(error);
     }
   };
 
@@ -98,8 +90,11 @@ export default function App() {
   };
 
   const handleSave = () => {
-    if (!formData.name.trim() || !formData.price.trim() || !formData.stock.trim()) {
-      // ใช้ alert ของเบราว์เซอร์ถ้ารันบนเว็บ เพราะ Alert.alert ของ React Native บางทีไม่เด้งบนเว็บ
+    const safeName = formData.name ? String(formData.name).trim() : '';
+    const safePrice = formData.price ? String(formData.price).trim() : '';
+    const safeStock = formData.stock ? String(formData.stock).trim() : '';
+
+    if (!safeName || !safePrice || !safeStock) {
       if (Platform.OS === 'web') {
         window.alert('Please fill in all fields (Name, Price, Stock)');
       } else {
@@ -109,26 +104,33 @@ export default function App() {
     }
 
     if (isEditing) {
-      setProducts(products.map(p => p.id === editId ? { ...formData, id: editId } : p));
+      setProducts(products.map(p => p.id === editId ? { 
+        id: editId, 
+        name: safeName, 
+        price: safePrice, 
+        stock: safeStock, 
+        image: formData.image 
+      } : p));
     } else {
       const newProduct = { 
-        ...formData, 
         id: Date.now().toString(),
+        name: safeName,
+        price: safePrice,
+        stock: safeStock,
         image: formData.image || 'https://via.placeholder.com/150/e6f2ff/007AFF?text=No+Image' 
       };
       setProducts([newProduct, ...products]);
     }
+    
     setModalVisible(false);
   };
 
   const handleDelete = (id) => {
     if (Platform.OS === 'web') {
       const confirmDelete = window.confirm('Are you sure you want to delete this item?');
-      if (confirmDelete) {
-        setProducts(products.filter(p => p.id !== id));
-      }
+      if (confirmDelete) setProducts(products.filter(p => p.id !== id));
     } else {
-      Alert.alert('Delete Product', 'Are you sure you want to delete this item?', [
+      Alert.alert('Delete', 'Are you sure you want to delete this item?', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => setProducts(products.filter(p => p.id !== id)) }
       ]);
@@ -184,7 +186,7 @@ export default function App() {
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton}><Text style={styles.menuIcon}>☰</Text></TouchableOpacity>
-        <Text style={styles.headerTitle}>DSTGadget Admin</Text>
+        <Text style={styles.headerTitle}>DSTGadget</Text>
         <TouchableOpacity style={styles.profileButton}><Text style={styles.profileIcon}>👤</Text></TouchableOpacity>
       </View>
 
@@ -195,41 +197,59 @@ export default function App() {
       </View>
 
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                <Text style={styles.modalTitle}>{isEditing ? 'Edit Product' : 'Add New Product'}</Text>
-                
-                <Text style={styles.inputLabel}>Product Image (.jpg / .png)</Text>
-                <TouchableOpacity style={styles.imageUploadBtn} onPress={pickImage}>
-                  {formData.image ? (
-                    <Image source={{ uri: formData.image }} style={styles.previewImage} />
-                  ) : (
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 24, marginBottom: 5 }}>📸</Text>
-                      <Text style={{ color: '#007AFF', fontWeight: '500' }}>Tap to select image</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+        {/* ลบ KeyboardAvoidingView ออกชั่วคราว เพราะมักจะเป็นสาเหตุหลักที่ทำให้พิมพ์ยากในบางอุปกรณ์ */}
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* เปลี่ยนเป็น keyboardShouldPersistTaps="always" เพื่อให้โฟกัสไม่หลุด */}
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always">
+              <Text style={styles.modalTitle}>{isEditing ? 'Edit Product' : 'Add New Product'}</Text>
+              
+              <Text style={styles.inputLabel}>Product Image (.jpg / .png)</Text>
+              <TouchableOpacity style={styles.imageUploadBtn} onPress={pickImage}>
+                {formData.image ? (
+                  <Image source={{ uri: formData.image }} style={styles.previewImage} />
+                ) : (
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 24, marginBottom: 5 }}>📸</Text>
+                    <Text style={{ color: '#007AFF', fontWeight: '500' }}>Tap to select image</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
 
-                <Text style={styles.inputLabel}>Product Name</Text>
-                <TextInput style={styles.inputField} placeholder="e.g. Mechanical Keyboard" value={formData.name} onChangeText={(text) => setFormData({...formData, name: text})} />
+              <Text style={styles.inputLabel}>Product Name</Text>
+              {/* เปลี่ยนวิธีอัปเดต State ให้ใช้ prev เพื่อลดการรีเฟรชซ้ำซ้อน */}
+              <TextInput 
+                style={styles.inputField} 
+                placeholder="e.g. Mechanical Keyboard" 
+                value={formData.name} 
+                onChangeText={(text) => setFormData(prev => ({...prev, name: text}))} 
+              />
 
-                <Text style={styles.inputLabel}>Price (฿)</Text>
-                <TextInput style={styles.inputField} placeholder="e.g. 1500" keyboardType="numeric" value={formData.price} onChangeText={(text) => setFormData({...formData, price: text})} />
+              <Text style={styles.inputLabel}>Price (฿)</Text>
+              <TextInput 
+                style={styles.inputField} 
+                placeholder="e.g. 1500" 
+                keyboardType="numeric" 
+                value={formData.price} 
+                onChangeText={(text) => setFormData(prev => ({...prev, price: text}))} 
+              />
 
-                <Text style={styles.inputLabel}>Stock Quantity</Text>
-                <TextInput style={styles.inputField} placeholder="e.g. 20" keyboardType="numeric" value={formData.stock} onChangeText={(text) => setFormData({...formData, stock: text})} />
+              <Text style={styles.inputLabel}>Stock Quantity</Text>
+              <TextInput 
+                style={styles.inputField} 
+                placeholder="e.g. 20" 
+                keyboardType="numeric" 
+                value={formData.stock} 
+                onChangeText={(text) => setFormData(prev => ({...prev, stock: text}))} 
+              />
 
-                <View style={styles.modalButtons}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.saveBtn} onPress={handleSave}><Text style={styles.saveBtnText}>Save</Text></TouchableOpacity>
-                </View>
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}><Text style={styles.saveBtnText}>Save</Text></TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       <View style={styles.bottomNav}>
@@ -242,7 +262,6 @@ export default function App() {
   );
 }
 
-// --- Styles คงเดิม ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f8ff" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 15, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#e1e8ed" },
@@ -272,14 +291,20 @@ const styles = StyleSheet.create({
   actionButtonsRow: { flexDirection: 'row', gap: 8 },
   editBtn: { padding: 8, backgroundColor: '#f0f8ff', borderRadius: 6, borderWidth: 1, borderColor: '#007AFF' },
   deleteBtn: { padding: 8, backgroundColor: '#fff0f0', borderRadius: 6, borderWidth: 1, borderColor: '#ff3b30' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, shadowColor: '#000', elevation: 5, maxHeight: '85%', width: '100%' },
+  
+  // ปรับแก้ Modal ให้พื้นหลังและพื้นที่พิมพ์เสถียรขึ้น
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }, 
+  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, shadowColor: '#000', elevation: 5, maxHeight: '90%', width: '100%' },
+  
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#007AFF', marginBottom: 20, textAlign: 'center' },
   inputLabel: { fontSize: 12, color: '#666', marginBottom: 5, fontWeight: '600' },
-  inputField: { borderWidth: 1, borderColor: '#e1e8ed', borderRadius: 8, padding: 12, marginBottom: 15, fontSize: 14, backgroundColor: '#f8f9fa' },
+  
+  // ปรับแก้ TextInput style เล็กน้อย
+  inputField: { borderWidth: 1, borderColor: '#e1e8ed', borderRadius: 8, padding: 12, marginBottom: 15, fontSize: 14, backgroundColor: '#f8f9fa', color: '#333' },
+  
   imageUploadBtn: { height: 120, backgroundColor: '#e6f2ff', borderRadius: 8, borderWidth: 1, borderColor: '#007AFF', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 15, overflow: 'hidden' },
   previewImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 10 },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 10, marginBottom: 30 },
   cancelBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#f8f9fa', alignItems: 'center', borderWidth: 1, borderColor: '#e1e8ed' },
   cancelBtnText: { color: '#666', fontWeight: 'bold' },
   saveBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#007AFF', alignItems: 'center' },
