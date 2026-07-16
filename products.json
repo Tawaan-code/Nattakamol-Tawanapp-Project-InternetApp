@@ -1,0 +1,35 @@
+[
+  {
+    "id": "1",
+    "name": "Unisex T-Shirt White",
+    "stock": 12,
+    "stock_text": "12 in stock",
+    "category": "T-shirts",
+    "location_count": 3,
+    "location_text": "3 stores",
+    "badge_status": "Active",
+    "image_url": "http://nindam.ddns.net/imges_prodcut/T_Shirt_White.jpg"
+  },
+  {
+    "id": "2",
+    "name": "Unisex T-Shirt Black",
+    "stock": 10,
+    "stock_text": "10 in stock",
+    "category": "T-shirts",
+    "location_count": 4,
+    "location_text": "4 stores",
+    "badge_status": "Active",
+    "image_url": "http://nindam.ddns.net/imges_prodcut/T_Shirt_Black.jpg"
+  },
+  {
+    "id": "3",
+    "name": "Kids T-Shirt Pink",
+    "stock": 1,
+    "stock_text": "1 in stock",
+    "category": "T-shirts",
+    "location_count": 1,
+    "location_text": "1 stores",
+    "badge_status": "Low in stock",
+    "image_url": "http://nindam.ddns.net/imges_prodcut/Kids_T_Shirt_Pink.jpg"
+  }
+]
