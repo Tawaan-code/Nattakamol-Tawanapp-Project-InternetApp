@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -18,15 +18,31 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState('Products');
 
-  const [products, setProducts] = useState([
-    { 
-      id: '1', 
-      name: 'Wireless Gaming Mouse', 
-      price: '1290', 
-      stock: '15', 
-      image: 'https://via.placeholder.com/150/007AFF/FFFFFF?text=Mouse' 
-    }
-  ]);
+  // เปลี่ยนเป็น Array ว่างเพื่อรอรับข้อมูลจาก GitHub
+  const [products, setProducts] = useState([]);
+
+  // เพิ่ม useEffect สำหรับดึงข้อมูลและแมปตัวแปรให้ตรงกับโค้ดแอป
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const response = await fetch('https://raw.githubusercontent.com/Tawaan-code/Nattakamol-Tawanapp-Project-InternetApp/refs/heads/main/products.json');
+        const data = await response.json();
+        
+        const formattedData = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price ? item.price : "0", 
+          stock: item.stock.toString(), 
+          image: item.image_url 
+        }));
+        
+        setProducts(formattedData);
+      } catch (error) {
+        console.error("โหลดข้อมูลไม่ได้: ", error);
+      }
+    };
+    loadProducts();
+  }, []);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -197,10 +213,8 @@ export default function App() {
       </View>
 
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        {/* ลบ KeyboardAvoidingView ออกชั่วคราว เพราะมักจะเป็นสาเหตุหลักที่ทำให้พิมพ์ยากในบางอุปกรณ์ */}
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* เปลี่ยนเป็น keyboardShouldPersistTaps="always" เพื่อให้โฟกัสไม่หลุด */}
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always">
               <Text style={styles.modalTitle}>{isEditing ? 'Edit Product' : 'Add New Product'}</Text>
               
@@ -217,7 +231,6 @@ export default function App() {
               </TouchableOpacity>
 
               <Text style={styles.inputLabel}>Product Name</Text>
-              {/* เปลี่ยนวิธีอัปเดต State ให้ใช้ prev เพื่อลดการรีเฟรชซ้ำซ้อน */}
               <TextInput 
                 style={styles.inputField} 
                 placeholder="e.g. Mechanical Keyboard" 
@@ -291,17 +304,11 @@ const styles = StyleSheet.create({
   actionButtonsRow: { flexDirection: 'row', gap: 8 },
   editBtn: { padding: 8, backgroundColor: '#f0f8ff', borderRadius: 6, borderWidth: 1, borderColor: '#007AFF' },
   deleteBtn: { padding: 8, backgroundColor: '#fff0f0', borderRadius: 6, borderWidth: 1, borderColor: '#ff3b30' },
-  
-  // ปรับแก้ Modal ให้พื้นหลังและพื้นที่พิมพ์เสถียรขึ้น
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }, 
   modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, shadowColor: '#000', elevation: 5, maxHeight: '90%', width: '100%' },
-  
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#007AFF', marginBottom: 20, textAlign: 'center' },
   inputLabel: { fontSize: 12, color: '#666', marginBottom: 5, fontWeight: '600' },
-  
-  // ปรับแก้ TextInput style เล็กน้อย
   inputField: { borderWidth: 1, borderColor: '#e1e8ed', borderRadius: 8, padding: 12, marginBottom: 15, fontSize: 14, backgroundColor: '#f8f9fa', color: '#333' },
-  
   imageUploadBtn: { height: 120, backgroundColor: '#e6f2ff', borderRadius: 8, borderWidth: 1, borderColor: '#007AFF', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 15, overflow: 'hidden' },
   previewImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 10, marginBottom: 30 },
