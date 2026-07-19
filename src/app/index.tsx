@@ -18,22 +18,19 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState('Products');
 
-  // เปลี่ยนเป็น Array ว่างเพื่อรอรับข้อมูลจาก GitHub
+  // ข้อมูลสินค้าที่รอรับจาก GitHub
   const [products, setProducts] = useState([]);
 
-  // เพิ่ม useEffect สำหรับดึงข้อมูลและแมปตัวแปรให้ตรงกับโค้ดแอป
   useEffect(() => {
     const loadProducts = async () => {
       try {
         const response = await fetch('https://raw.githubusercontent.com/Tawaan-code/Nattakamol-Tawanapp-Project-InternetApp/refs/heads/main/products.json');
         const data = await response.json();
         
+        // เพิ่ม price เข้าไปเผื่อไว้ เพราะใน JSON เดิมไม่มี price (จะได้ไม่ Error)
         const formattedData = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price ? item.price : "0", 
-          stock: item.stock.toString(), 
-          image: item.image_url 
+          ...item,
+          price: item.price ? item.price : "0"
         }));
         
         setProducts(formattedData);
@@ -48,7 +45,6 @@ export default function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
   
-  // ใช้ State ธรรมดาในการเก็บข้อมูลฟอร์ม
   const [formData, setFormData] = useState({ name: '', price: '', stock: '', image: null });
 
   const pickImage = async () => {
@@ -99,7 +95,12 @@ export default function App() {
   };
 
   const openEditModal = (item) => {
-    setFormData({ name: item.name, price: item.price, stock: item.stock, image: item.image });
+    setFormData({ 
+      name: item.name, 
+      price: item.price, 
+      stock: item.stock.toString(), 
+      image: item.image_url // ใช้ image_url ตาม JSON
+    });
     setEditId(item.id);
     setIsEditing(true);
     setModalVisible(true);
@@ -119,23 +120,39 @@ export default function App() {
       return;
     }
 
+    const numericStock = parseInt(safeStock) || 0;
+
     if (isEditing) {
-      setProducts(products.map(p => p.id === editId ? { 
-        id: editId, 
+      const updatedProducts = products.map(p => p.id === editId ? { 
+        ...p, // คงค่าเดิมเอาไว้
         name: safeName, 
         price: safePrice, 
-        stock: safeStock, 
-        image: formData.image 
-      } : p));
+        stock: numericStock, 
+        stock_text: `${numericStock} in stock`,
+        badge_status: numericStock > 0 ? "Active" : "Low in stock",
+        image_url: formData.image || p.image_url 
+      } : p);
+      
+      setProducts(updatedProducts);
+      console.log("✏️ ข้อมูลที่ถูกแก้ไข (นำไปวางใน JSON ได้เลย):", JSON.stringify(updatedProducts.find(p => p.id === editId), null, 2));
+
     } else {
+      // โครงสร้างสำหรับเพิ่มสินค้าใหม่ ให้ตรงกับ JSON เป๊ะๆ
       const newProduct = { 
         id: Date.now().toString(),
         name: safeName,
         price: safePrice,
-        stock: safeStock,
-        image: formData.image || 'https://via.placeholder.com/150/e6f2ff/007AFF?text=No+Image' 
+        stock: numericStock,
+        stock_text: `${numericStock} in stock`,
+        category: "T-shirts", // กำหนดค่า default
+        location_count: 1, // กำหนดค่า default
+        location_text: "1 stores", // กำหนดค่า default
+        badge_status: numericStock > 0 ? "Active" : "Low in stock",
+        image_url: formData.image || 'https://via.placeholder.com/150/e6f2ff/007AFF?text=No+Image' 
       };
+      
       setProducts([newProduct, ...products]);
+      console.log("✅ ข้อมูลที่เพิ่มใหม่ (นำไปวางต่อท้ายใน JSON ได้เลย):", JSON.stringify(newProduct, null, 2));
     }
     
     setModalVisible(false);
@@ -174,14 +191,16 @@ export default function App() {
           products.map((item) => (
             <View key={item.id} style={styles.productCard}>
               <View style={styles.imagePlaceholder}>
-                <Image source={{ uri: item.image }} style={styles.productImage} />
+                {/* เปลี่ยนมาอ่านค่าจาก image_url */}
+                <Image source={{ uri: item.image_url }} style={styles.productImage} />
               </View>
               
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{item.name}</Text>
                 <Text style={styles.productPrice}>฿ {item.price}</Text>
                 <Text style={[styles.productStock, { color: parseInt(item.stock) === 0 ? '#ff3b30' : '#34c759' }]}>
-                  {parseInt(item.stock) === 0 ? 'Out of Stock' : `In Stock: ${item.stock}`}
+                  {/* เปลี่ยนมาใช้ stock_text หากมีของ */}
+                  {parseInt(item.stock) === 0 ? 'Out of Stock' : item.stock_text}
                 </Text>
               </View>
 
