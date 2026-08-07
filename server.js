@@ -46,6 +46,58 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
+// ==========================================
+// หัวข้อที่ 2: API Endpoint สำหรับเพิ่มข้อมูลสินค้า (POST)
+// ==========================================
+app.post('/api/products', async (req, res) => {
+  try {
+    const {
+      name, price, stock, image, badge_status, category, location_text
+    } = req.body;
+
+    // ตรวจสอบว่ามีการส่งชื่อสินค้ามาหรือไม่
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    // แปลงค่าตัวเลขและกำหนดค่าเริ่มต้นให้พร้อมบันทึก
+    const safePrice = Number(price) || 0;
+    const safeStock = Number(stock) || 0;
+    const stockText = safeStock > 0 ? `${safeStock} in stock` : 'Out of Stock';
+
+    // คำสั่ง SQL INSERT
+    const sql = `
+      INSERT INTO products 
+      (NAME, price, stock, stock_text, category, location_count, location_text, badge_status, image_url) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    // จับคู่ข้อมูล
+    const params = [
+      name, 
+      safePrice, 
+      safeStock, 
+      stockText,
+      category || 'T-shirts', 
+      1, 
+      location_text || '1 stores', 
+      badge_status || (safeStock > 0 ? 'Active' : 'Low in stock'), 
+      image || null 
+    ];
+
+    const [result] = await pool.query(sql, params);
+
+    return res.status(201).json({ 
+      success: true, 
+      productId: result.insertId 
+    });
+
+  } catch (err) {
+    console.error('Create Product Error:', err.message);
+    return res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
 // API Default เช็คสถานะเซิร์ฟเวอร์
 app.get('/api', (req, res) => {
   res.send('API is running');
