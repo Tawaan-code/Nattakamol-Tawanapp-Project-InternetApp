@@ -55,24 +55,20 @@ app.post('/api/products', async (req, res) => {
       name, price, stock, image, badge_status, category, location_text
     } = req.body;
 
-    // ตรวจสอบว่ามีการส่งชื่อสินค้ามาหรือไม่
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // แปลงค่าตัวเลขและกำหนดค่าเริ่มต้นให้พร้อมบันทึก
     const safePrice = Number(price) || 0;
     const safeStock = Number(stock) || 0;
     const stockText = safeStock > 0 ? `${safeStock} in stock` : 'Out of Stock';
 
-    // คำสั่ง SQL INSERT
     const sql = `
       INSERT INTO products 
       (NAME, price, stock, stock_text, category, location_count, location_text, badge_status, image_url) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
-    // จับคู่ข้อมูล
     const params = [
       name, 
       safePrice, 
@@ -95,6 +91,56 @@ app.post('/api/products', async (req, res) => {
   } catch (err) {
     console.error('Create Product Error:', err.message);
     return res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+// ==========================================
+// หัวข้อที่ 4: API Endpoint สำหรับแก้ไขข้อมูลสินค้า (PUT)
+// ==========================================
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name, price, stock, image, badge_status, category, location_text
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    const safePrice = Number(price) || 0;
+    const safeStock = Number(stock) || 0;
+    const stockText = safeStock > 0 ? `${safeStock} in stock` : 'Out of Stock';
+
+    const sql = `
+      UPDATE products 
+      SET NAME = ?, price = ?, stock = ?, stock_text = ?, category = ?, location_text = ?, badge_status = ?, image_url = ?
+      WHERE id = ?
+    `;
+
+    const params = [
+      name, 
+      safePrice, 
+      safeStock, 
+      stockText,
+      category || 'T-shirts', 
+      location_text || '1 stores', 
+      badge_status || (safeStock > 0 ? 'Active' : 'Low in stock'), 
+      image || null,
+      id
+    ];
+
+    const [result] = await pool.query(sql, params);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('Update Product Error:', err.message);
+    res.status(500).json({ error: 'Failed to update product' });
   }
 });
 
