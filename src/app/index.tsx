@@ -22,7 +22,6 @@ export default function App() {
   // URL ของ Cloud Server คุณ
   const API_URL = 'http://119.59.102.161:3015/api/products';
 
-  // 1. ฟังก์ชันดึงข้อมูลจาก Database
   const loadProducts = async () => {
     try {
       const response = await fetch(API_URL);
@@ -30,7 +29,6 @@ export default function App() {
       setProducts(data);
     } catch (error) {
       console.error("โหลดข้อมูลไม่ได้: ", error);
-      Alert.alert('Error', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
     }
   };
 
@@ -41,7 +39,6 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  
   const [formData, setFormData] = useState({ name: '', price: '', stock: '', image: null });
 
   const pickImage = async () => {
@@ -103,7 +100,6 @@ export default function App() {
     setModalVisible(true);
   };
 
-  // 2. ฟังก์ชันบันทึกข้อมูล (หัวข้อที่ 3 และ 5)
   const handleSave = async () => {
     const safeName = formData.name ? String(formData.name).trim() : '';
     const safePrice = formData.price ? String(formData.price).trim() : '';
@@ -124,46 +120,70 @@ export default function App() {
 
     try {
       if (isEditing) {
-        // อัปเดตข้อมูล (PUT)
         const response = await fetch(`${API_URL}/${editId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        
         if (response.ok) {
-          Alert.alert('Success', 'อัปเดตสินค้าเรียบร้อย!');
+          if (Platform.OS !== 'web') Alert.alert('Success', 'อัปเดตสินค้าเรียบร้อย!');
         } else {
-          Alert.alert('Error', 'ไม่สามารถอัปเดตสินค้าได้');
+          if (Platform.OS !== 'web') Alert.alert('Error', 'ไม่สามารถอัปเดตสินค้าได้');
         }
       } else {
-        // เพิ่มข้อมูลใหม่ (POST)
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-
         if (response.status === 201) {
-          Alert.alert('Success', 'เพิ่มสินค้าใหม่เรียบร้อย!');
+          if (Platform.OS !== 'web') Alert.alert('Success', 'เพิ่มสินค้าใหม่เรียบร้อย!');
         } else {
-          Alert.alert('Error', 'ไม่สามารถเพิ่มสินค้าได้');
+          if (Platform.OS !== 'web') Alert.alert('Error', 'ไม่สามารถเพิ่มสินค้าได้');
         }
       }
       
       setModalVisible(false);
-      loadProducts(); // โหลดข้อมูลใหม่จาก Database ทันที
+      loadProducts(); 
       
     } catch (error) {
       console.error("API Error: ", error);
-      Alert.alert('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      if (Platform.OS !== 'web') Alert.alert('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     }
   };
 
+  // ==========================================
+  // ฟังก์ชันสำหรับการลบ (DELETE)
+  // ==========================================
   const handleDelete = (id) => {
-    Alert.alert('Delete', 'ฟังก์ชันลบยังไม่ได้เชื่อม API ในตัวอย่างนี้ครับ', [
-      { text: 'OK' }
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบสินค้านี้?')) {
+        executeDelete(id);
+      }
+    } else {
+      Alert.alert('ยืนยันการลบ', 'คุณแน่ใจหรือไม่ว่าต้องการลบสินค้านี้?', [
+        { text: 'ยกเลิก', style: 'cancel' },
+        { text: 'ลบ', style: 'destructive', onPress: () => executeDelete(id) }
+      ]);
+    }
+  };
+
+  const executeDelete = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        if (Platform.OS !== 'web') Alert.alert('Success', 'ลบสินค้าเรียบร้อย!');
+        loadProducts(); 
+      } else {
+        if (Platform.OS !== 'web') Alert.alert('Error', 'ไม่สามารถลบสินค้าได้');
+      }
+    } catch (error) {
+      console.error("Delete Error: ", error);
+      if (Platform.OS !== 'web') Alert.alert('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+    }
   };
 
   const renderProducts = () => (
