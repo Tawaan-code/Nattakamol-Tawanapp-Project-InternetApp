@@ -9,24 +9,31 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('Products');
   const [products, setProducts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(''); // State สำหรับระบบ Search
+  const [searchQuery, setSearchQuery] = useState(''); 
   
   const API_URL = 'http://119.59.102.161:3015/api/products';
   const LOGIN_URL = 'http://119.59.102.161:3015/api/login';
 
   const handleLogin = async () => {
     try {
+      // แก้ไขตรงนี้: บังคับตัดช่องว่างและทำเป็นตัวพิมพ์เล็ก เพื่อป้องกันการพิมพ์ผิด
+      const payload = {
+        username: username.trim().toLowerCase(),
+        password: password.trim()
+      };
+
       const response = await fetch(LOGIN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify(payload)
       });
+      
       if (response.ok) {
         setIsLoggedIn(true);
         loadProducts();
       } else {
-        if (Platform.OS === 'web') window.alert('Invalid credentials');
-        else Alert.alert('Error', 'Invalid credentials');
+        if (Platform.OS === 'web') window.alert('Invalid credentials: รหัสผ่านไม่ถูกต้อง');
+        else Alert.alert('Error', 'Invalid credentials: รหัสผ่านไม่ถูกต้อง');
       }
     } catch (error) {
       if (Platform.OS === 'web') window.alert('Cannot connect to server');
@@ -89,8 +96,11 @@ export default function App() {
   };
 
   const handleDelete = (id) => {
-    if (Platform.OS === 'web' && window.confirm('Are you sure you want to delete this?')) { executeDelete(id); }
-    else if (Platform.OS !== 'web') { Alert.alert('Confirm Delete', 'Are you sure?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => executeDelete(id) }]); }
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to delete this?')) executeDelete(id);
+    } else {
+      Alert.alert('Confirm Delete', 'Are you sure?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => executeDelete(id) }]); 
+    }
   };
 
   const executeDelete = async (id) => {
@@ -100,7 +110,6 @@ export default function App() {
     } catch (error) { console.error(error); }
   };
 
-  // ระบบ Search (กรองข้อมูลจาก state)
   const filteredProducts = products.filter(item => {
     const itemName = item.NAME || item.name || '';
     return itemName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -110,9 +119,23 @@ export default function App() {
     return (
       <View style={styles.loginContainer}>
         <Text style={styles.loginTitle}>System Login</Text>
-        <TextInput style={styles.loginInput} placeholder="Username (admin)" value={username} onChangeText={setUsername} autoCapitalize="none" />
-        <TextInput style={styles.loginInput} placeholder="Password (1234)" value={password} onChangeText={setPassword} secureTextEntry />
-        <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}><Text style={styles.loginBtnText}>Login</Text></TouchableOpacity>
+        <TextInput 
+          style={styles.loginInput} 
+          placeholder="Username (admin)" 
+          value={username} 
+          onChangeText={setUsername} 
+          autoCapitalize="none" 
+        />
+        <TextInput 
+          style={styles.loginInput} 
+          placeholder="Password (1234)" 
+          value={password} 
+          onChangeText={setPassword} 
+          secureTextEntry 
+        />
+        <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
+          <Text style={styles.loginBtnText}>Login</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -129,7 +152,6 @@ export default function App() {
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
             <Text style={styles.searchIcon}>🔍</Text>
-            {/* Input สำหรับ Search */}
             <TextInput style={styles.searchInput} placeholder="Search products..." value={searchQuery} onChangeText={setSearchQuery} />
           </View>
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}><Text style={styles.addButtonText}>+ Add</Text></TouchableOpacity>
