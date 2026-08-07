@@ -6,7 +6,12 @@ const mysql = require('mysql2/promise');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+// เปิด CORS ให้รองรับการเรียกจากแอปทุกช่องทาง
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '5mb' }));
 
 // ตั้งค่า MySQL Connection Pool
@@ -34,10 +39,11 @@ const pool = mysql.createPool({
   }
 })();
 
-// API Endpoint สำหรับดึงข้อมูลสินค้าทั้งหมด
+// ==========================================
+// 1. ดึงข้อมูลสินค้าทั้งหมด (GET)
+// ==========================================
 app.get('/api/products', async (req, res) => {
   try {
-    // คิวรีข้อมูลจากตาราง products 
     const [rows] = await pool.query('SELECT * FROM products ORDER BY id DESC');
     res.json(rows);
   } catch (e) {
@@ -47,7 +53,7 @@ app.get('/api/products', async (req, res) => {
 });
 
 // ==========================================
-// หัวข้อที่ 2: API Endpoint สำหรับเพิ่มข้อมูลสินค้า (POST)
+// 2. เพิ่มข้อมูลสินค้าใหม่ (POST)
 // ==========================================
 app.post('/api/products', async (req, res) => {
   try {
@@ -55,9 +61,7 @@ app.post('/api/products', async (req, res) => {
       name, price, stock, image, badge_status, category, location_text
     } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
+    if (!name) return res.status(400).json({ error: 'Name is required' });
 
     const safePrice = Number(price) || 0;
     const safeStock = Number(stock) || 0;
@@ -70,23 +74,13 @@ app.post('/api/products', async (req, res) => {
     `;
     
     const params = [
-      name, 
-      safePrice, 
-      safeStock, 
-      stockText,
-      category || 'T-shirts', 
-      1, 
-      location_text || '1 stores', 
-      badge_status || (safeStock > 0 ? 'Active' : 'Low in stock'), 
-      image || null 
+      name, safePrice, safeStock, stockText,
+      category || 'T-shirts', 1, location_text || '1 stores', 
+      badge_status || (safeStock > 0 ? 'Active' : 'Low in stock'), image || null 
     ];
 
     const [result] = await pool.query(sql, params);
-
-    return res.status(201).json({ 
-      success: true, 
-      productId: result.insertId 
-    });
+    return res.status(201).json({ success: true, productId: result.insertId });
 
   } catch (err) {
     console.error('Create Product Error:', err.message);
@@ -95,7 +89,7 @@ app.post('/api/products', async (req, res) => {
 });
 
 // ==========================================
-// หัวข้อที่ 4: API Endpoint สำหรับแก้ไขข้อมูลสินค้า (PUT)
+// 3. แก้ไขข้อมูลสินค้า (PUT)
 // ==========================================
 app.put('/api/products/:id', async (req, res) => {
   try {
@@ -104,9 +98,7 @@ app.put('/api/products/:id', async (req, res) => {
       name, price, stock, image, badge_status, category, location_text
     } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
+    if (!name) return res.status(400).json({ error: 'Name is required' });
 
     const safePrice = Number(price) || 0;
     const safeStock = Number(stock) || 0;
@@ -119,28 +111,36 @@ app.put('/api/products/:id', async (req, res) => {
     `;
 
     const params = [
-      name, 
-      safePrice, 
-      safeStock, 
-      stockText,
-      category || 'T-shirts', 
-      location_text || '1 stores', 
-      badge_status || (safeStock > 0 ? 'Active' : 'Low in stock'), 
-      image || null,
-      id
+      name, safePrice, safeStock, stockText,
+      category || 'T-shirts', location_text || '1 stores', 
+      badge_status || (safeStock > 0 ? 'Active' : 'Low in stock'), image || null, id
     ];
 
     const [result] = await pool.query(sql, params);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Product not found' });
     res.json({ success: true });
 
   } catch (err) {
     console.error('Update Product Error:', err.message);
     res.status(500).json({ error: 'Failed to update product' });
+  }
+});
+
+// ==========================================
+// 4. ลบข้อมูลสินค้า (DELETE)
+// ==========================================
+app.delete('/api/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = 'DELETE FROM products WHERE id = ?';
+    const [result] = await pool.query(sql, [id]);
+
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Product not found' });
+    res.json({ success: true, message: 'Deleted successfully' });
+
+  } catch (err) {
+    console.error('Delete Product Error:', err.message);
+    res.status(500).json({ error: 'Failed to delete product' });
   }
 });
 
