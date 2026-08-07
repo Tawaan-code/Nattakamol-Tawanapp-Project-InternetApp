@@ -17,27 +17,24 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Products');
-
-  // ข้อมูลสินค้าที่รอรับจาก GitHub
   const [products, setProducts] = useState([]);
+  
+  // URL ของ Cloud Server คุณ
+  const API_URL = 'http://119.59.102.161:3015/api/products';
+
+  // 1. ฟังก์ชันดึงข้อมูลจาก Database
+  const loadProducts = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("โหลดข้อมูลไม่ได้: ", error);
+      Alert.alert('Error', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
+    }
+  };
 
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const response = await fetch('https://raw.githubusercontent.com/Tawaan-code/Nattakamol-Tawanapp-Project-InternetApp/refs/heads/main/products.json');
-        const data = await response.json();
-        
-        // เพิ่ม price เข้าไปเผื่อไว้ เพราะใน JSON เดิมไม่มี price (จะได้ไม่ Error)
-        const formattedData = data.map(item => ({
-          ...item,
-          price: item.price ? item.price : "0"
-        }));
-        
-        setProducts(formattedData);
-      } catch (error) {
-        console.error("โหลดข้อมูลไม่ได้: ", error);
-      }
-    };
     loadProducts();
   }, []);
 
@@ -96,78 +93,77 @@ export default function App() {
 
   const openEditModal = (item) => {
     setFormData({ 
-      name: item.name, 
-      price: item.price, 
-      stock: item.stock.toString(), 
-      image: item.image_url // ใช้ image_url ตาม JSON
+      name: item.NAME || item.name, 
+      price: item.price ? item.price.toString() : '', 
+      stock: item.stock ? item.stock.toString() : '0', 
+      image: item.image_url 
     });
     setEditId(item.id);
     setIsEditing(true);
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  // 2. ฟังก์ชันบันทึกข้อมูล (หัวข้อที่ 3 และ 5)
+  const handleSave = async () => {
     const safeName = formData.name ? String(formData.name).trim() : '';
     const safePrice = formData.price ? String(formData.price).trim() : '';
     const safeStock = formData.stock ? String(formData.stock).trim() : '';
 
     if (!safeName || !safePrice || !safeStock) {
-      if (Platform.OS === 'web') {
-        window.alert('Please fill in all fields (Name, Price, Stock)');
-      } else {
-        Alert.alert('Error', 'Please fill in all fields (Name, Price, Stock)');
-      }
+      if (Platform.OS === 'web') window.alert('Please fill in all fields (Name, Price, Stock)');
+      else Alert.alert('Error', 'Please fill in all fields (Name, Price, Stock)');
       return;
     }
 
-    const numericStock = parseInt(safeStock) || 0;
+    const payload = {
+      name: safeName,
+      price: parseInt(safePrice) || 0,
+      stock: parseInt(safeStock) || 0,
+      image: formData.image
+    };
 
-    if (isEditing) {
-      const updatedProducts = products.map(p => p.id === editId ? { 
-        ...p, // คงค่าเดิมเอาไว้
-        name: safeName, 
-        price: safePrice, 
-        stock: numericStock, 
-        stock_text: `${numericStock} in stock`,
-        badge_status: numericStock > 0 ? "Active" : "Low in stock",
-        image_url: formData.image || p.image_url 
-      } : p);
-      
-      setProducts(updatedProducts);
-      console.log("✏️ ข้อมูลที่ถูกแก้ไข (นำไปวางใน JSON ได้เลย):", JSON.stringify(updatedProducts.find(p => p.id === editId), null, 2));
+    try {
+      if (isEditing) {
+        // อัปเดตข้อมูล (PUT)
+        const response = await fetch(`${API_URL}/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) {
+          Alert.alert('Success', 'อัปเดตสินค้าเรียบร้อย!');
+        } else {
+          Alert.alert('Error', 'ไม่สามารถอัปเดตสินค้าได้');
+        }
+      } else {
+        // เพิ่มข้อมูลใหม่ (POST)
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-    } else {
-      // โครงสร้างสำหรับเพิ่มสินค้าใหม่ ให้ตรงกับ JSON เป๊ะๆ
-      const newProduct = { 
-        id: Date.now().toString(),
-        name: safeName,
-        price: safePrice,
-        stock: numericStock,
-        stock_text: `${numericStock} in stock`,
-        category: "T-shirts", // กำหนดค่า default
-        location_count: 1, // กำหนดค่า default
-        location_text: "1 stores", // กำหนดค่า default
-        badge_status: numericStock > 0 ? "Active" : "Low in stock",
-        image_url: formData.image || 'https://via.placeholder.com/150/e6f2ff/007AFF?text=No+Image' 
-      };
+        if (response.status === 201) {
+          Alert.alert('Success', 'เพิ่มสินค้าใหม่เรียบร้อย!');
+        } else {
+          Alert.alert('Error', 'ไม่สามารถเพิ่มสินค้าได้');
+        }
+      }
       
-      setProducts([newProduct, ...products]);
-      console.log("✅ ข้อมูลที่เพิ่มใหม่ (นำไปวางต่อท้ายใน JSON ได้เลย):", JSON.stringify(newProduct, null, 2));
+      setModalVisible(false);
+      loadProducts(); // โหลดข้อมูลใหม่จาก Database ทันที
+      
+    } catch (error) {
+      console.error("API Error: ", error);
+      Alert.alert('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     }
-    
-    setModalVisible(false);
   };
 
   const handleDelete = (id) => {
-    if (Platform.OS === 'web') {
-      const confirmDelete = window.confirm('Are you sure you want to delete this item?');
-      if (confirmDelete) setProducts(products.filter(p => p.id !== id));
-    } else {
-      Alert.alert('Delete', 'Are you sure you want to delete this item?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => setProducts(products.filter(p => p.id !== id)) }
-      ]);
-    }
+    Alert.alert('Delete', 'ฟังก์ชันลบยังไม่ได้เชื่อม API ในตัวอย่างนี้ครับ', [
+      { text: 'OK' }
+    ]);
   };
 
   const renderProducts = () => (
@@ -189,18 +185,16 @@ export default function App() {
           <Text style={styles.emptyText}>No products available.</Text>
         ) : (
           products.map((item) => (
-            <View key={item.id} style={styles.productCard}>
+            <View key={item.id.toString()} style={styles.productCard}>
               <View style={styles.imagePlaceholder}>
-                {/* เปลี่ยนมาอ่านค่าจาก image_url */}
-                <Image source={{ uri: item.image_url }} style={styles.productImage} />
+                <Image source={{ uri: item.image_url || 'https://via.placeholder.com/150/e6f2ff/007AFF?text=No+Image' }} style={styles.productImage} />
               </View>
               
               <View style={styles.productInfo}>
-                <Text style={styles.productName}>{item.name}</Text>
+                <Text style={styles.productName}>{item.NAME || item.name}</Text>
                 <Text style={styles.productPrice}>฿ {item.price}</Text>
                 <Text style={[styles.productStock, { color: parseInt(item.stock) === 0 ? '#ff3b30' : '#34c759' }]}>
-                  {/* เปลี่ยนมาใช้ stock_text หากมีของ */}
-                  {parseInt(item.stock) === 0 ? 'Out of Stock' : item.stock_text}
+                  {parseInt(item.stock) === 0 ? 'Out of Stock' : (item.stock_text || `${item.stock} in stock`)}
                 </Text>
               </View>
 
