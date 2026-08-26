@@ -197,7 +197,7 @@ export default function App() {
       <View style={styles.mainContent}>
         <View style={styles.toolbar}>
           <View style={styles.searchBox}>
-            <Text style={styles.searchIcon}>/</Text>
+            <Text style={styles.searchIcon}>🔍</Text>
             <TextInput style={styles.searchInput} placeholder="Search inventory..." value={searchQuery} onChangeText={setSearchQuery} placeholderTextColor="#A0AEC0" />
           </View>
           <TouchableOpacity style={styles.primaryBtn} onPress={openAddModal}>
@@ -243,14 +243,33 @@ export default function App() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{isEditing ? 'Edit Item' : 'New Item'}</Text>
             
-            <TouchableOpacity style={styles.imageUploadBtn} onPress={pickImage}>
-              {formData.image ? (
-                <Image source={{ uri: formData.image }} style={styles.previewImage} />
-              ) : (
-                <Text style={styles.uploadText}>+ Upload Image</Text>
-              )}
-            </TouchableOpacity>
+            {/* อัปเดตส่วนจัดการรูปภาพให้รองรับการวาง Link */}
+            <Text style={styles.inputLabel}>Product Image</Text>
+            <View style={styles.imageInputContainer}>
+              <TouchableOpacity style={styles.uploadBtnSmall} onPress={pickImage}>
+                <Text style={styles.uploadBtnText}>+ Upload</Text>
+              </TouchableOpacity>
+              <Text style={{color: '#A0AEC0', fontSize: 12, fontWeight: 'bold'}}>OR</Text>
+              <TextInput 
+                style={styles.urlInput} 
+                placeholder="Paste Image URL..." 
+                value={formData.image && formData.image.length < 1000 ? formData.image : ''} 
+                onChangeText={(text) => setFormData(p => ({...p, image: text}))} 
+                placeholderTextColor="#A0AEC0" 
+              />
+            </View>
+
+            {/* แสดงตัวอย่างรูปภาพเมื่อมีการอัปโหลดหรือวาง Link */}
+            {formData.image && (
+              <View style={styles.imagePreviewWrapper}>
+                <Image source={{ uri: formData.image }} style={styles.previewImageFull} />
+                <TouchableOpacity style={styles.removeImageBtn} onPress={() => setFormData(p => ({...p, image: null}))}>
+                  <Text style={{color: 'white', fontWeight: 'bold', fontSize: 12}}>✕ Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             
+            <Text style={styles.inputLabel}>Product Details</Text>
             <TextInput style={styles.inputField} placeholder="Item Name" value={formData.name} onChangeText={(t) => setFormData(p => ({...p, name: t}))} placeholderTextColor="#A0AEC0" />
             <View style={{flexDirection: 'row', gap: 10}}>
               <TextInput style={[styles.inputField, {flex: 1}]} placeholder="Price (THB)" keyboardType="numeric" value={formData.price} onChangeText={(t) => setFormData(p => ({...p, price: t}))} placeholderTextColor="#A0AEC0" />
@@ -335,10 +354,18 @@ const styles = StyleSheet.create({
   modalContent: { width: '100%', maxWidth: 450, backgroundColor: 'white', borderRadius: 16, padding: 25, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A202C', marginBottom: 20 },
   
+  inputLabel: { fontSize: 12, fontWeight: '700', color: '#718096', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   inputField: { borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F7FAFC', borderRadius: 8, padding: 14, marginBottom: 15, fontSize: 14, color: '#1A202C', outlineStyle: 'none' },
-  imageUploadBtn: { height: 100, backgroundColor: '#F7FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 20, overflow: 'hidden' },
-  previewImage: { width: '100%', height: '100%' },
-  uploadText: { fontSize: 13, color: '#A0AEC0', fontWeight: '600' },
+  
+  // Styles สำหรับอัปโหลดรูป / ใส่ Link
+  imageInputContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
+  uploadBtnSmall: { backgroundColor: '#E2E8F0', paddingHorizontal: 15, paddingVertical: 12, borderRadius: 8 },
+  uploadBtnText: { color: '#4A5568', fontWeight: '600', fontSize: 13 },
+  urlInput: { flex: 1, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F7FAFC', borderRadius: 8, padding: 12, fontSize: 13, color: '#1A202C', outlineStyle: 'none' },
+  
+  imagePreviewWrapper: { height: 160, borderRadius: 8, overflow: 'hidden', marginBottom: 20, position: 'relative', borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F7FAFC' },
+  previewImageFull: { width: '100%', height: '100%', resizeMode: 'contain' },
+  removeImageBtn: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(26,32,44,0.7)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   
   modalButtons: { flexDirection: 'row', gap: 10, marginTop: 10, justifyContent: 'flex-end' },
 });
