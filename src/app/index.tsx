@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function App() {
-  // ================= State ทั้งหมด =================
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -20,12 +19,10 @@ export default function App() {
   const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({ name: '', price: '', stock: '', image: null });
 
-  // URL สำหรับยิง API ไปที่เซิร์ฟเวอร์
   const API_URL = 'http://119.59.102.161:3015/api/products';
   const LOGIN_URL = 'http://119.59.102.161:3015/api/login';
   const CHANGE_PWD_URL = 'http://119.59.102.161:3015/api/change-password';
 
-  // ================= ระบบ Login & เปลี่ยนรหัส =================
   const handleLogin = async () => {
     try {
       const payload = { username: username.trim().toLowerCase(), password: password.trim() };
@@ -38,18 +35,18 @@ export default function App() {
         setIsLoggedIn(true);
         loadProducts();
       } else {
-        if (Platform.OS === 'web') window.alert('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-        else Alert.alert('Error', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+        if (Platform.OS === 'web') window.alert('Invalid credentials');
+        else Alert.alert('Error', 'Invalid credentials');
       }
     } catch (error) {
-      if (Platform.OS === 'web') window.alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
-      else Alert.alert('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      if (Platform.OS === 'web') window.alert('Cannot connect to server');
+      else Alert.alert('Error', 'Cannot connect to server');
     }
   };
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword) {
-      return Platform.OS === 'web' ? window.alert('กรุณากรอกข้อมูลให้ครบ') : Alert.alert('Error', 'กรุณากรอกข้อมูลให้ครบ');
+      return Platform.OS === 'web' ? window.alert('Please fill in all fields') : Alert.alert('Error', 'Please fill in all fields');
     }
     try {
       const response = await fetch(CHANGE_PWD_URL, {
@@ -59,8 +56,8 @@ export default function App() {
       });
       const result = await response.json();
       if (response.ok) {
-        if (Platform.OS === 'web') window.alert('เปลี่ยนรหัสผ่านสำเร็จ!');
-        else Alert.alert('Success', 'เปลี่ยนรหัสผ่านสำเร็จ!');
+        if (Platform.OS === 'web') window.alert('Password updated successfully');
+        else Alert.alert('Success', 'Password updated successfully');
         setChangePwdVisible(false);
         setOldPassword('');
         setNewPassword('');
@@ -69,12 +66,11 @@ export default function App() {
         else Alert.alert('Error', result.error);
       }
     } catch (error) {
-      if (Platform.OS === 'web') window.alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
-      else Alert.alert('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      if (Platform.OS === 'web') window.alert('Cannot connect to server');
+      else Alert.alert('Error', 'Cannot connect to server');
     }
   };
 
-  // ================= ระบบจัดการสินค้า (CRUD) =================
   const loadProducts = async () => {
     try {
       const response = await fetch(API_URL);
@@ -126,9 +122,9 @@ export default function App() {
 
   const handleDelete = (id) => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to delete this?')) executeDelete(id);
+      if (window.confirm('Confirm delete this item?')) executeDelete(id);
     } else {
-      Alert.alert('Confirm Delete', 'Are you sure?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => executeDelete(id) }]); 
+      Alert.alert('Confirm', 'Delete this item?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => executeDelete(id) }]); 
     }
   };
 
@@ -144,91 +140,123 @@ export default function App() {
     return itemName.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  // ================= หน้าจอ Login =================
   if (!isLoggedIn) {
     return (
       <View style={styles.loginContainer}>
-        <Text style={styles.loginTitle}>System Login</Text>
-        <TextInput style={styles.loginInput} placeholder="Username (admin)" value={username} onChangeText={setUsername} autoCapitalize="none" />
-        <TextInput style={styles.loginInput} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
-        <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}><Text style={styles.loginBtnText}>Login</Text></TouchableOpacity>
+        <View style={styles.loginCard}>
+          <Text style={styles.logoText}>DST<Text style={{fontWeight: '300'}}>Gadget</Text></Text>
+          <Text style={styles.loginSub}>Admin Portal</Text>
+          <TextInput style={styles.loginInput} placeholder="Username" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#A0AEC0" />
+          <TextInput style={styles.loginInput} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#A0AEC0" />
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
+            <Text style={styles.primaryBtnText}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
-  // ================= หน้าจอแอปพลิเคชันหลัก =================
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f0f8ff" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F7FAFC" />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>DSTGadget Admin</Text>
-        <View style={{ flexDirection: 'row', gap: 15 }}>
-          <TouchableOpacity onPress={() => setChangePwdVisible(true)}><Text style={{color: '#007AFF', fontWeight: 'bold'}}>เปลี่ยนรหัส</Text></TouchableOpacity>
-          <TouchableOpacity onPress={() => setIsLoggedIn(false)}><Text style={{color: 'red', fontWeight: 'bold'}}>Logout</Text></TouchableOpacity>
+        <Text style={styles.headerTitle}>DST<Text style={{fontWeight: '300'}}>Gadget</Text></Text>
+        <View style={{ flexDirection: 'row', gap: 20 }}>
+          <TouchableOpacity onPress={() => setChangePwdVisible(true)}>
+            <Text style={styles.headerLink}>Security</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsLoggedIn(false)}>
+            <Text style={[styles.headerLink, {color: '#E53E3E'}]}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <View style={{ flex: 1 }}>
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput style={styles.searchInput} placeholder="Search products..." value={searchQuery} onChangeText={setSearchQuery} />
+      <View style={styles.mainContent}>
+        {/* Toolbar */}
+        <View style={styles.toolbar}>
+          <View style={styles.searchBox}>
+            <Text style={styles.searchIcon}>/</Text>
+            <TextInput style={styles.searchInput} placeholder="Search inventory..." value={searchQuery} onChangeText={setSearchQuery} placeholderTextColor="#A0AEC0" />
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}><Text style={styles.addButtonText}>+ Add</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.primaryBtn} onPress={openAddModal}>
+            <Text style={styles.primaryBtnText}>+ New Item</Text>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.productContainer}>
-          <Text style={styles.sectionTitle}>Inventory ({filteredProducts.length} Items)</Text>
+        {/* Product List */}
+        <ScrollView style={styles.productContainer} showsVerticalScrollIndicator={false}>
+          <Text style={styles.sectionTitle}>Overview <Text style={styles.badge}>{filteredProducts.length}</Text></Text>
+          
           {filteredProducts.map((item) => (
             <View key={item.id.toString()} style={styles.productCard}>
-              <Image source={{ uri: item.image_url || 'https://via.placeholder.com/150' }} style={styles.imagePlaceholder} />
+              <View style={styles.imagePlaceholder}>
+                {item.image_url ? (
+                  <Image source={{ uri: item.image_url }} style={styles.productImage} />
+                ) : (
+                  <Text style={styles.noImageText}>IMG</Text>
+                )}
+              </View>
+              
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{item.NAME || item.name}</Text>
                 <Text style={styles.productPrice}>฿ {item.price}</Text>
-                <Text style={styles.productStock}>{item.stock_text}</Text>
               </View>
+              
+              <View style={styles.stockBadgeContainer}>
+                 <Text style={[styles.stockBadge, { backgroundColor: item.stock > 0 ? '#C6F6D5' : '#FED7D7', color: item.stock > 0 ? '#22543D' : '#822727' }]}>
+                    {item.stock > 0 ? `${item.stock} in stock` : 'Out of stock'}
+                 </Text>
+              </View>
+
               <View style={styles.actionButtonsRow}>
-                <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(item)}><Text>✏️</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}><Text>🗑️</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.iconBtn} onPress={() => openEditModal(item)}><Text style={styles.iconText}>Edit</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.iconBtnDanger} onPress={() => handleDelete(item.id)}><Text style={styles.iconTextDanger}>Del</Text></TouchableOpacity>
               </View>
             </View>
           ))}
         </ScrollView>
       </View>
 
-      {/* Modal เพิ่ม/แก้ไขสินค้า */}
-      <Modal visible={modalVisible} animationType="slide" transparent={true}>
+      {/* Modal Add/Edit */}
+      <Modal visible={modalVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <ScrollView>
-              <Text style={styles.modalTitle}>{isEditing ? 'Edit Product' : 'Add New Product'}</Text>
-              <TouchableOpacity style={styles.imageUploadBtn} onPress={pickImage}>
-                {formData.image ? <Image source={{ uri: formData.image }} style={styles.previewImage} /> : <Text>📸 Tap to select image</Text>}
-              </TouchableOpacity>
-              <TextInput style={styles.inputField} placeholder="Product Name" value={formData.name} onChangeText={(t) => setFormData(p => ({...p, name: t}))} />
-              <TextInput style={styles.inputField} placeholder="Price" keyboardType="numeric" value={formData.price} onChangeText={(t) => setFormData(p => ({...p, price: t}))} />
-              <TextInput style={styles.inputField} placeholder="Stock" keyboardType="numeric" value={formData.stock} onChangeText={(t) => setFormData(p => ({...p, stock: t}))} />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}><Text>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}><Text style={{color:'white'}}>Save</Text></TouchableOpacity>
-              </View>
-            </ScrollView>
+            <Text style={styles.modalTitle}>{isEditing ? 'Edit Item' : 'New Item'}</Text>
+            
+            <TouchableOpacity style={styles.imageUploadBtn} onPress={pickImage}>
+              {formData.image ? (
+                <Image source={{ uri: formData.image }} style={styles.previewImage} />
+              ) : (
+                <Text style={styles.uploadText}>+ Upload Image</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TextInput style={styles.inputField} placeholder="Item Name" value={formData.name} onChangeText={(t) => setFormData(p => ({...p, name: t}))} placeholderTextColor="#A0AEC0" />
+            <View style={{flexDirection: 'row', gap: 10}}>
+              <TextInput style={[styles.inputField, {flex: 1}]} placeholder="Price (THB)" keyboardType="numeric" value={formData.price} onChangeText={(t) => setFormData(p => ({...p, price: t}))} placeholderTextColor="#A0AEC0" />
+              <TextInput style={[styles.inputField, {flex: 1}]} placeholder="Stock Qty" keyboardType="numeric" value={formData.stock} onChangeText={(t) => setFormData(p => ({...p, stock: t}))} placeholderTextColor="#A0AEC0" />
+            </View>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.secondaryBtn} onPress={() => setModalVisible(false)}><Text style={styles.secondaryBtnText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.primaryBtn} onPress={handleSave}><Text style={styles.primaryBtnText}>Save Changes</Text></TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* Modal เปลี่ยนรหัสผ่าน */}
+      {/* Modal Security */}
       <Modal visible={changePwdVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: 350 }]}>
-            <Text style={styles.modalTitle}>เปลี่ยนรหัสผ่าน</Text>
-            <TextInput style={styles.inputField} placeholder="รหัสผ่านเดิม" secureTextEntry value={oldPassword} onChangeText={setOldPassword} />
-            <TextInput style={styles.inputField} placeholder="รหัสผ่านใหม่" secureTextEntry value={newPassword} onChangeText={setNewPassword} />
+            <Text style={styles.modalTitle}>Security Settings</Text>
+            <TextInput style={styles.inputField} placeholder="Current Password" secureTextEntry value={oldPassword} onChangeText={setOldPassword} placeholderTextColor="#A0AEC0" />
+            <TextInput style={styles.inputField} placeholder="New Password" secureTextEntry value={newPassword} onChangeText={setNewPassword} placeholderTextColor="#A0AEC0" />
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setChangePwdVisible(false); setOldPassword(''); setNewPassword(''); }}><Text>ยกเลิก</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleChangePassword}><Text style={{color:'white'}}>บันทึก</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setChangePwdVisible(false); setOldPassword(''); setNewPassword(''); }}><Text style={styles.secondaryBtnText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.primaryBtn} onPress={handleChangePassword}><Text style={styles.primaryBtnText}>Update</Text></TouchableOpacity>
             </View>
           </View>
         </View>
@@ -237,39 +265,67 @@ export default function App() {
   );
 }
 
+// ================= MINIMALIST IT STYLES =================
 const styles = StyleSheet.create({
-  loginContainer: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#f0f8ff' },
-  loginTitle: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 30, color: '#007AFF' },
-  loginInput: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#ddd' },
-  loginBtn: { backgroundColor: '#007AFF', padding: 15, borderRadius: 10, alignItems: 'center' },
-  loginBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  container: { flex: 1, backgroundColor: "#f0f8ff" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 15, backgroundColor: "white", borderBottomWidth: 1, borderColor: "#e1e8ed" },
-  headerTitle: { fontSize: 20, fontWeight: "bold", color: "#007AFF" },
-  searchContainer: { flexDirection: "row", padding: 15, backgroundColor: "white", gap: 10 },
-  searchBar: { flex: 1, flexDirection: "row", backgroundColor: "#f8f9fa", borderRadius: 8, paddingHorizontal: 10, alignItems: "center", borderWidth: 1, borderColor: "#e1e8ed" },
-  searchIcon: { marginRight: 5 },
-  searchInput: { flex: 1, height: 40, outlineStyle: 'none' },
-  addButton: { backgroundColor: "#007AFF", paddingHorizontal: 15, justifyContent: "center", borderRadius: 8 },
-  addButtonText: { color: "white", fontWeight: "bold" },
-  productContainer: { flex: 1, padding: 15 },
-  sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 15 },
-  productCard: { flexDirection: "row", backgroundColor: "white", padding: 12, borderRadius: 10, marginBottom: 12, shadowColor: "#000", elevation: 2 },
-  imagePlaceholder: { width: 60, height: 60, borderRadius: 8, marginRight: 12, backgroundColor: '#eee' },
-  productInfo: { flex: 1, justifyContent: 'center' },
-  productName: { fontSize: 15, fontWeight: "600" },
-  productPrice: { color: "#007AFF", fontWeight: "bold", marginVertical: 4 },
-  productStock: { fontSize: 12, color: '#666' },
-  actionButtonsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  editBtn: { padding: 8, backgroundColor: '#f0f8ff', borderRadius: 6, borderWidth: 1, borderColor: '#007AFF' },
-  deleteBtn: { padding: 8, backgroundColor: '#fff0f0', borderRadius: 6, borderWidth: 1, borderColor: '#ff3b30' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }, 
-  modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 20, maxHeight: '90%' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  inputField: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 15, outlineStyle: 'none' },
-  imageUploadBtn: { height: 120, backgroundColor: '#e6f2ff', borderRadius: 8, borderWidth: 1, borderColor: '#007AFF', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  previewImage: { width: '100%', height: '100%', borderRadius: 8 },
-  modalButtons: { flexDirection: 'row', gap: 10 },
-  cancelBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#eee', alignItems: 'center' },
-  saveBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#007AFF', alignItems: 'center' }
+  container: { flex: 1, backgroundColor: "#F7FAFC" }, // Light Slate
+  
+  // Login Styles
+  loginContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F7FAFC', padding: 20 },
+  loginCard: { width: '100%', maxWidth: 400, backgroundColor: 'white', padding: 30, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  logoText: { fontSize: 28, fontWeight: '800', color: '#1A202C', textAlign: 'center', letterSpacing: -1 },
+  loginSub: { fontSize: 14, color: '#718096', textAlign: 'center', marginBottom: 30, letterSpacing: 1, textTransform: 'uppercase' },
+  
+  // Header
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 18, backgroundColor: "white", borderBottomWidth: 1, borderColor: "#E2E8F0" },
+  headerTitle: { fontSize: 20, fontWeight: "800", color: "#1A202C", letterSpacing: -0.5 },
+  headerLink: { fontSize: 14, fontWeight: '600', color: '#4A5568' },
+  
+  // Main Content
+  mainContent: { flex: 1, maxWidth: 1200, width: '100%', alignSelf: 'center' },
+  toolbar: { flexDirection: "row", padding: 20, gap: 15 },
+  searchBox: { flex: 1, flexDirection: "row", backgroundColor: "white", borderRadius: 8, paddingHorizontal: 15, alignItems: "center", borderWidth: 1, borderColor: "#E2E8F0" },
+  searchIcon: { color: '#A0AEC0', marginRight: 10, fontWeight: 'bold' },
+  searchInput: { flex: 1, height: 45, fontSize: 14, color: '#1A202C', outlineStyle: 'none' },
+  
+  // Global Buttons
+  primaryBtn: { backgroundColor: "#1A202C", paddingHorizontal: 20, paddingVertical: 12, justifyContent: "center", alignItems: "center", borderRadius: 8 },
+  primaryBtnText: { color: "white", fontWeight: "600", fontSize: 14 },
+  secondaryBtn: { backgroundColor: "transparent", paddingHorizontal: 20, paddingVertical: 12, justifyContent: "center", alignItems: "center", borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  secondaryBtnText: { color: "#4A5568", fontWeight: "600", fontSize: 14 },
+  
+  // Products List
+  productContainer: { flex: 1, paddingHorizontal: 20 },
+  sectionTitle: { fontSize: 14, fontWeight: "700", color: "#4A5568", marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1 },
+  badge: { backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, fontSize: 12, color: '#1A202C' },
+  
+  productCard: { flexDirection: "row", backgroundColor: "white", padding: 15, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
+  imagePlaceholder: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#F7FAFC', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', marginRight: 15, overflow: 'hidden' },
+  productImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  noImageText: { fontSize: 10, color: '#A0AEC0', fontWeight: 'bold' },
+  
+  productInfo: { flex: 2, justifyContent: 'center' },
+  productName: { fontSize: 15, fontWeight: "600", color: '#1A202C', marginBottom: 4 },
+  productPrice: { fontSize: 14, color: "#4A5568", fontWeight: "500" },
+  
+  stockBadgeContainer: { flex: 1, alignItems: 'flex-start' },
+  stockBadge: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, overflow: 'hidden' },
+  
+  // Small Action Buttons
+  actionButtonsRow: { flexDirection: 'row', gap: 8 },
+  iconBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#F7FAFC', borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  iconText: { fontSize: 12, fontWeight: '600', color: '#4A5568' },
+  iconBtnDanger: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#FFF5F5', borderRadius: 6, borderWidth: 1, borderColor: '#FED7D7' },
+  iconTextDanger: { fontSize: 12, fontWeight: '600', color: '#E53E3E' },
+  
+  // Modals
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(26, 32, 44, 0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }, 
+  modalContent: { width: '100%', maxWidth: 450, backgroundColor: 'white', borderRadius: 16, padding: 25, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A202C', marginBottom: 20 },
+  
+  inputField: { borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F7FAFC', borderRadius: 8, padding: 14, marginBottom: 15, fontSize: 14, color: '#1A202C', outlineStyle: 'none' },
+  imageUploadBtn: { height: 100, backgroundColor: '#F7FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 20, overflow: 'hidden' },
+  previewImage: { width: '100%', height: '100%' },
+  uploadText: { fontSize: 13, color: '#A0AEC0', fontWeight: '600' },
+  
+  modalButtons: { flexDirection: 'row', gap: 10, marginTop: 10, justifyContent: 'flex-end' },
 });
