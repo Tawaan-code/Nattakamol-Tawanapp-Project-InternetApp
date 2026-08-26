@@ -297,8 +297,8 @@ const styles = StyleSheet.create({
   badge: { backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, fontSize: 12, color: '#1A202C' },
   
   // GRID
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, justifyContent: 'flex-start' },
-  gridCard: { width: 250, backgroundColor: "white", borderRadius: 12, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  gridCard: { width: '48%', backgroundColor: "white", borderRadius: 12, padding: 12, marginBottom: 15, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
   cardImagePlaceholder: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#F7FAFC', borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', marginBottom: 12, position: 'relative', overflow: 'hidden' },
   cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   noImageText: { fontSize: 12, color: '#A0AEC0', fontWeight: 'bold' },
