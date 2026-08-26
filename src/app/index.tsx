@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState(null);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -19,45 +20,59 @@ export default function App() {
   const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({ name: '', price: '', stock: '', image: null });
 
-  const API_URL = 'http://119.59.102.161:3015/api/products';
-  const LOGIN_URL = 'http://119.59.102.161:3015/api/login';
-  const CHANGE_PWD_URL = 'http://119.59.102.161:3015/api/change-password';
+  const IP_SERVER = 'http://119.59.102.161:3015';
 
-  const handleLogin = async () => {
+  const handleAuth = async () => {
+    if (!username || !password) {
+      return Platform.OS === 'web' ? window.alert('กรุณากรอกข้อมูลให้ครบ') : Alert.alert('Error', 'กรุณากรอกข้อมูลให้ครบ');
+    }
+    const endpoint = isRegistering ? '/api/register' : '/api/login';
     try {
-      const payload = { username: username.trim().toLowerCase(), password: password.trim() };
-      const response = await fetch(LOGIN_URL, {
+      const response = await fetch(`${IP_SERVER}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ username: username.trim().toLowerCase(), password: password.trim() })
       });
+      const data = await response.json();
+      
       if (response.ok) {
-        setIsLoggedIn(true);
-        loadProducts();
+        if (isRegistering) {
+          if (Platform.OS === 'web') window.alert('สร้างบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ');
+          else Alert.alert('Success', 'สร้างบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ');
+          setIsRegistering(false);
+          setPassword('');
+        } else {
+          setLoggedInUser(username.trim().toLowerCase());
+          loadProducts();
+        }
       } else {
-        if (Platform.OS === 'web') window.alert('Invalid credentials');
-        else Alert.alert('Error', 'Invalid credentials');
+        if (Platform.OS === 'web') window.alert(data.error || 'เกิดข้อผิดพลาด');
+        else Alert.alert('Error', data.error || 'เกิดข้อผิดพลาด');
       }
     } catch (error) {
-      if (Platform.OS === 'web') window.alert('Cannot connect to server');
-      else Alert.alert('Error', 'Cannot connect to server');
+      if (Platform.OS === 'web') window.alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      else Alert.alert('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     }
   };
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword) {
-      return Platform.OS === 'web' ? window.alert('Please fill in all fields') : Alert.alert('Error', 'Please fill in all fields');
+      return Platform.OS === 'web' ? window.alert('กรุณากรอกข้อมูลให้ครบ') : Alert.alert('Error', 'กรุณากรอกข้อมูลให้ครบ');
     }
     try {
-      const response = await fetch(CHANGE_PWD_URL, {
+      const response = await fetch(`${IP_SERVER}/api/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldPassword: oldPassword.trim(), newPassword: newPassword.trim() })
+        body: JSON.stringify({ 
+          username: loggedInUser, 
+          oldPassword: oldPassword.trim(), 
+          newPassword: newPassword.trim() 
+        })
       });
       const result = await response.json();
       if (response.ok) {
-        if (Platform.OS === 'web') window.alert('Password updated successfully');
-        else Alert.alert('Success', 'Password updated successfully');
+        if (Platform.OS === 'web') window.alert('เปลี่ยนรหัสผ่านสำเร็จ!');
+        else Alert.alert('Success', 'เปลี่ยนรหัสผ่านสำเร็จ!');
         setChangePwdVisible(false);
         setOldPassword('');
         setNewPassword('');
@@ -66,19 +81,17 @@ export default function App() {
         else Alert.alert('Error', result.error);
       }
     } catch (error) {
-      if (Platform.OS === 'web') window.alert('Cannot connect to server');
-      else Alert.alert('Error', 'Cannot connect to server');
+      if (Platform.OS === 'web') window.alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+      else Alert.alert('Error', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
   };
 
   const loadProducts = async () => {
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch(`${IP_SERVER}/api/products`);
       const data = await response.json();
       setProducts(data);
-    } catch (error) {
-      console.error("Load error: ", error);
-    }
+    } catch (error) { console.error("Load error: ", error); }
   };
 
   const pickImage = async () => {
@@ -109,10 +122,10 @@ export default function App() {
 
   const handleSave = async () => {
     const payload = { name: formData.name.trim(), price: parseInt(formData.price) || 0, stock: parseInt(formData.stock) || 0, image: formData.image };
-    if (!payload.name) return Platform.OS === 'web' ? window.alert('Name is required') : Alert.alert('Error', 'Name is required');
+    if (!payload.name) return Platform.OS === 'web' ? window.alert('กรุณากรอกชื่อสินค้า') : Alert.alert('Error', 'กรุณากรอกชื่อสินค้า');
 
     try {
-      const url = isEditing ? `${API_URL}/${editId}` : API_URL;
+      const url = isEditing ? `${IP_SERVER}/api/products/${editId}` : `${IP_SERVER}/api/products`;
       const method = isEditing ? 'PUT' : 'POST';
       await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       setModalVisible(false);
@@ -122,15 +135,15 @@ export default function App() {
 
   const handleDelete = (id) => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Confirm delete this item?')) executeDelete(id);
+      if (window.confirm('ต้องการลบสินค้านี้ใช่หรือไม่?')) executeDelete(id);
     } else {
-      Alert.alert('Confirm', 'Delete this item?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => executeDelete(id) }]); 
+      Alert.alert('ยืนยัน', 'ต้องการลบสินค้านี้ใช่หรือไม่?', [{ text: 'ยกเลิก', style: 'cancel' }, { text: 'ลบ', style: 'destructive', onPress: () => executeDelete(id) }]); 
     }
   };
 
   const executeDelete = async (id) => {
     try {
-      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      await fetch(`${IP_SERVER}/api/products/${id}`, { method: 'DELETE' });
       loadProducts(); 
     } catch (error) { console.error(error); }
   };
@@ -140,16 +153,24 @@ export default function App() {
     return itemName.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  if (!isLoggedIn) {
+  if (!loggedInUser) {
     return (
       <View style={styles.loginContainer}>
         <View style={styles.loginCard}>
           <Text style={styles.logoText}>DST<Text style={{fontWeight: '300'}}>Gadget</Text></Text>
-          <Text style={styles.loginSub}>Admin Portal</Text>
-          <TextInput style={styles.loginInput} placeholder="Username" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#A0AEC0" />
-          <TextInput style={styles.loginInput} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#A0AEC0" />
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
-            <Text style={styles.primaryBtnText}>Sign In</Text>
+          <Text style={styles.loginSub}>{isRegistering ? 'Create New Account' : 'Admin Portal'}</Text>
+          
+          <TextInput style={styles.inputFieldAuth} placeholder="Username" value={username} onChangeText={setUsername} autoCapitalize="none" placeholderTextColor="#A0AEC0" />
+          <TextInput style={styles.inputFieldAuth} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#A0AEC0" />
+          
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleAuth}>
+            <Text style={styles.primaryBtnText}>{isRegistering ? 'Sign Up' : 'Sign In'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.switchAuthBtn} onPress={() => { setIsRegistering(!isRegistering); setPassword(''); }}>
+            <Text style={styles.switchAuthText}>
+              {isRegistering ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -160,21 +181,20 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F7FAFC" />
       
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>DST<Text style={{fontWeight: '300'}}>Gadget</Text></Text>
-        <View style={{ flexDirection: 'row', gap: 20 }}>
+        <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
+          <Text style={{fontSize: 12, color: '#A0AEC0'}}>User: {loggedInUser}</Text>
           <TouchableOpacity onPress={() => setChangePwdVisible(true)}>
             <Text style={styles.headerLink}>Security</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setIsLoggedIn(false)}>
+          <TouchableOpacity onPress={() => setLoggedInUser(null)}>
             <Text style={[styles.headerLink, {color: '#E53E3E'}]}>Logout</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.mainContent}>
-        {/* Toolbar */}
         <View style={styles.toolbar}>
           <View style={styles.searchBox}>
             <Text style={styles.searchIcon}>/</Text>
@@ -185,7 +205,6 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        {/* Product List */}
         <ScrollView style={styles.productContainer} showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionTitle}>Overview <Text style={styles.badge}>{filteredProducts.length}</Text></Text>
           
@@ -219,7 +238,6 @@ export default function App() {
         </ScrollView>
       </View>
 
-      {/* Modal Add/Edit */}
       <Modal visible={modalVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -247,7 +265,6 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* Modal Security */}
       <Modal visible={changePwdVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: 350 }]}>
@@ -265,35 +282,33 @@ export default function App() {
   );
 }
 
-// ================= MINIMALIST IT STYLES =================
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7FAFC" }, // Light Slate
+  container: { flex: 1, backgroundColor: "#F7FAFC" }, 
   
-  // Login Styles
   loginContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F7FAFC', padding: 20 },
-  loginCard: { width: '100%', maxWidth: 400, backgroundColor: 'white', padding: 30, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  loginCard: { width: '100%', maxWidth: 400, backgroundColor: 'white', padding: 30, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
   logoText: { fontSize: 28, fontWeight: '800', color: '#1A202C', textAlign: 'center', letterSpacing: -1 },
-  loginSub: { fontSize: 14, color: '#718096', textAlign: 'center', marginBottom: 30, letterSpacing: 1, textTransform: 'uppercase' },
+  loginSub: { fontSize: 14, color: '#718096', textAlign: 'center', marginBottom: 25, letterSpacing: 1, textTransform: 'uppercase' },
   
-  // Header
+  inputFieldAuth: { borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F7FAFC', borderRadius: 8, padding: 14, marginBottom: 15, fontSize: 14, color: '#1A202C', outlineStyle: 'none' },
+  switchAuthBtn: { marginTop: 20, alignItems: 'center', paddingVertical: 10 },
+  switchAuthText: { color: '#4A5568', fontSize: 13, fontWeight: '500', textDecorationLine: 'underline' },
+  
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 18, backgroundColor: "white", borderBottomWidth: 1, borderColor: "#E2E8F0" },
   headerTitle: { fontSize: 20, fontWeight: "800", color: "#1A202C", letterSpacing: -0.5 },
   headerLink: { fontSize: 14, fontWeight: '600', color: '#4A5568' },
   
-  // Main Content
   mainContent: { flex: 1, maxWidth: 1200, width: '100%', alignSelf: 'center' },
   toolbar: { flexDirection: "row", padding: 20, gap: 15 },
   searchBox: { flex: 1, flexDirection: "row", backgroundColor: "white", borderRadius: 8, paddingHorizontal: 15, alignItems: "center", borderWidth: 1, borderColor: "#E2E8F0" },
   searchIcon: { color: '#A0AEC0', marginRight: 10, fontWeight: 'bold' },
   searchInput: { flex: 1, height: 45, fontSize: 14, color: '#1A202C', outlineStyle: 'none' },
   
-  // Global Buttons
-  primaryBtn: { backgroundColor: "#1A202C", paddingHorizontal: 20, paddingVertical: 12, justifyContent: "center", alignItems: "center", borderRadius: 8 },
+  primaryBtn: { backgroundColor: "#1A202C", paddingHorizontal: 20, paddingVertical: 14, justifyContent: "center", alignItems: "center", borderRadius: 8 },
   primaryBtnText: { color: "white", fontWeight: "600", fontSize: 14 },
   secondaryBtn: { backgroundColor: "transparent", paddingHorizontal: 20, paddingVertical: 12, justifyContent: "center", alignItems: "center", borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
   secondaryBtnText: { color: "#4A5568", fontWeight: "600", fontSize: 14 },
   
-  // Products List
   productContainer: { flex: 1, paddingHorizontal: 20 },
   sectionTitle: { fontSize: 14, fontWeight: "700", color: "#4A5568", marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1 },
   badge: { backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, fontSize: 12, color: '#1A202C' },
@@ -310,14 +325,12 @@ const styles = StyleSheet.create({
   stockBadgeContainer: { flex: 1, alignItems: 'flex-start' },
   stockBadge: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, overflow: 'hidden' },
   
-  // Small Action Buttons
   actionButtonsRow: { flexDirection: 'row', gap: 8 },
   iconBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#F7FAFC', borderRadius: 6, borderWidth: 1, borderColor: '#E2E8F0' },
   iconText: { fontSize: 12, fontWeight: '600', color: '#4A5568' },
   iconBtnDanger: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#FFF5F5', borderRadius: 6, borderWidth: 1, borderColor: '#FED7D7' },
   iconTextDanger: { fontSize: 12, fontWeight: '600', color: '#E53E3E' },
   
-  // Modals
   modalOverlay: { flex: 1, backgroundColor: 'rgba(26, 32, 44, 0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }, 
   modalContent: { width: '100%', maxWidth: 450, backgroundColor: 'white', borderRadius: 16, padding: 25, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A202C', marginBottom: 20 },
