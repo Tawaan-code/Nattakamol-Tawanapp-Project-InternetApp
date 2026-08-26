@@ -7,7 +7,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] }));
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -20,54 +20,81 @@ const pool = mysql.createPool({
 });
 
 // ==========================================
-// ระบบบัญชีผู้ใช้งาน (Register, Login, Change Password)
+// AUTO SETUP DATABASE (จัดการฐานข้อมูลอัตโนมัติ)
+// ==========================================
+(async function setupDatabase() {
+  try {
+    const conn = await pool.getConnection();
+    console.log('Connected to Database. Auto-checking tables...');
+    
+    // 1. สร้างตาราง users อัตโนมัติ
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL
+      )
+    `);
+
+    // 2. เพิ่มแอดมินเริ่มต้น (admin/1234) เผื่อไว้ให้เลย
+    try {
+      await conn.query(`INSERT IGNORE INTO users (username, password) VALUES ('admin', '1234')`);
+    } catch(e) {}
+
+    // 3. แทรกคอลัมน์ detail เข้าตาราง products อัตโนมัติ
+    try {
+      await conn.query('ALTER TABLE products ADD COLUMN detail TEXT');
+    } catch (e) {} // ปล่อยผ่านถ้ามีคอลัมน์นี้อยู่แล้ว
+
+    // 4. แก้คอลัมน์รูปให้รับข้อมูลได้ไม่จำกัดอัตโนมัติ
+    try {
+      await conn.query('ALTER TABLE products MODIFY COLUMN image_url LONGTEXT');
+    } catch (e) {}
+
+    conn.release();
+    console.log('Database Ready!');
+  } catch (err) {
+    console.error('DB Setup Error:', err.message);
+  }
+})();
+
+// ==========================================
+// API ระบบบัญชี (Register, Login, Change Password)
 // ==========================================
 app.post('/api/register', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    if (!username || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
 
     const [existing] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-    if (existing.length > 0) return res.status(400).json({ error: 'Username นี้มีผู้ใช้งานแล้ว' });
+    if (existing.length > 0) return res.status(400).json({ error: 'Username นี้ถูกใช้แล้ว' });
 
     await pool.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, password]);
     res.status(201).json({ success: true, message: 'สร้างบัญชีสำเร็จ' });
-  } catch (err) {
-    res.status(500).json({ error: 'Database error' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Server Error' }); }
 });
 
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const [rows] = await pool.query('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
-
-    if (rows.length > 0) {
-      res.json({ success: true, message: 'Login successful', username: rows[0].username });
-    } else {
-      res.status(401).json({ error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: 'Database error' });
-  }
+    if (rows.length > 0) res.json({ success: true, username: rows[0].username });
+    else res.status(401).json({ error: 'ชื่อผู้ใช้หรือรหัสผ่านผิด' });
+  } catch (err) { res.status(500).json({ error: 'Server Error' }); }
 });
 
 app.post('/api/change-password', async (req, res) => {
   try {
     const { username, oldPassword, newPassword } = req.body;
     const [rows] = await pool.query('SELECT * FROM users WHERE username = ? AND password = ?', [username, oldPassword]);
-    
-    if (rows.length === 0) return res.status(400).json({ error: 'รหัสผ่านเดิมไม่ถูกต้อง' });
-
+    if (rows.length === 0) return res.status(400).json({ error: 'รหัสผ่านเดิมผิด' });
     await pool.query('UPDATE users SET password = ? WHERE username = ?', [newPassword, username]);
-    res.json({ success: true, message: 'เปลี่ยนรหัสผ่านสำเร็จ' });
-  } catch (err) {
-    res.status(500).json({ error: 'Database error' });
-  }
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Server Error' }); }
 });
 
 // ==========================================
-// ระบบจัดการสินค้า (CRUD)
+// API สินค้า (CRUD)
 // ==========================================
 app.get('/api/products', async (req, res) => {
   try {
@@ -78,9 +105,10 @@ app.get('/api/products', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
   try {
-    const { name, price, stock, image, badge_status, category, location_text } = req.body;
-    const sql = `INSERT INTO products (NAME, price, stock, stock_text, category, location_count, location_text, badge_status, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [name, Number(price)||0, Number(stock)||0, (Number(stock)||0) > 0 ? `${Number(stock)||0} in stock` : 'Out of Stock', category || 'T-shirts', 1, location_text || '1 stores', badge_status || ((Number(stock)||0) > 0 ? 'Active' : 'Low in stock'), image || null];
+    const { name, price, stock, image, detail } = req.body;
+    const safeStock = Number(stock)||0;
+    const sql = `INSERT INTO products (NAME, price, stock, stock_text, category, location_count, location_text, badge_status, image_url, detail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [name, Number(price)||0, safeStock, safeStock > 0 ? `${safeStock} in stock` : 'Out of Stock', 'Gadgets', 1, 'Main Store', safeStock > 0 ? 'Active' : 'Low stock', image || null, detail || ''];
     const [result] = await pool.query(sql, params);
     res.status(201).json({ success: true, productId: result.insertId });
   } catch (err) { res.status(500).json({ error: 'Error' }); }
@@ -88,9 +116,10 @@ app.post('/api/products', async (req, res) => {
 
 app.put('/api/products/:id', async (req, res) => {
   try {
-    const { name, price, stock, image, badge_status, category, location_text } = req.body;
-    const sql = `UPDATE products SET NAME = ?, price = ?, stock = ?, stock_text = ?, category = ?, location_text = ?, badge_status = ?, image_url = ? WHERE id = ?`;
-    const params = [name, Number(price)||0, Number(stock)||0, (Number(stock)||0) > 0 ? `${Number(stock)||0} in stock` : 'Out of Stock', category || 'T-shirts', location_text || '1 stores', badge_status || ((Number(stock)||0) > 0 ? 'Active' : 'Low in stock'), image || null, req.params.id];
+    const { name, price, stock, image, detail } = req.body;
+    const safeStock = Number(stock)||0;
+    const sql = `UPDATE products SET NAME = ?, price = ?, stock = ?, stock_text = ?, badge_status = ?, image_url = ?, detail = ? WHERE id = ?`;
+    const params = [name, Number(price)||0, safeStock, safeStock > 0 ? `${safeStock} in stock` : 'Out of Stock', safeStock > 0 ? 'Active' : 'Low stock', image || null, detail || '', req.params.id];
     await pool.query(sql, params);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Error' }); }
